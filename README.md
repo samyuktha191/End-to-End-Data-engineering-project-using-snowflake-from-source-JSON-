@@ -11,7 +11,6 @@ This use case involves utilizing Snowflake's free trial edition without employin
 Objective: This use case focuses on loading a JSON file into Snowflake using the Snowsite web UI and CLI, processing the data internally, and mimicking the functionality of an external named stage. We will follow a series of steps to profile, analyze, flatten, cleanse, and consume the data, culminating in the creation of BI dashboards.
 
 
-
 Implementation Steps -
 =>Load JSON File into Internal Named Stages
 ==>>Data Profiling and Root Level JSON Data Analysis
@@ -20,7 +19,6 @@ Implementation Steps -
 ===>>>>>Consumption Layer Development (Fact and Dimension Tables)
 ===>>>>>>BI/Dashboard Integration
 ===>>>>>>>Ongoing Data Ingestion and Automated Dashboard Refresh
-
 
 
 Project Prerequisites
@@ -36,3 +34,26 @@ Data Cleaning & Transformation:
 ===>>Snowsight Worksheet using SQL statements
 Visualization:
 ===>>Snowsight Dashboard
+
+Architecture in Snowflake
+In Snowflake (or any DWH system), we follow a layered architecture with logically named layers:
+
+Landing Layer
+Description: Initial staging area for data.
+Components: Named Stage, file formats.
+
+RAW Layer
+Description: Raw, unprocessed data.
+Components: Flattened JSON data and metadata, data analysis, and profiling.
+
+Clean Layer
+Description: Processed data with logical entities.
+Components: Flattened nested JSON data, creation of logical entities, and a cleaner dataset.
+
+Consumption Layer
+Description: Final, meaningful, and usable data.
+Components: Data prepared for use, views for dashboards.
+
+BI Layer
+Description: Visualization and reporting.
+Components: Snowsight filters and dashboards.
