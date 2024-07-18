@@ -10,7 +10,9 @@ This use case involves utilizing Snowflake's free trial edition without employin
 
 Objective: This use case focuses on loading a JSON file into Snowflake using the Snowsite web UI and CLI, processing the data internally, and mimicking the functionality of an external named stage. We will follow a series of steps to profile, analyze, flatten, cleanse, and consume the data, culminating in the creation of BI dashboards.
 
-Steps -
+
+
+Implementation Steps -
 =>Load JSON File into Internal Named Stages
 ==>>Data Profiling and Root Level JSON Data Analysis
 ===>>>Storing Data, JSON Flattening, and Further Analysis
@@ -18,6 +20,8 @@ Steps -
 ===>>>>>Consumption Layer Development (Fact and Dimension Tables)
 ===>>>>>>BI/Dashboard Integration
 ===>>>>>>>Ongoing Data Ingestion and Automated Dashboard Refresh
+
+
 
 Project Prerequisites
 Snowflake Editions:
