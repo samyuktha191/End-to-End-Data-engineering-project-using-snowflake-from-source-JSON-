@@ -1,0 +1,374 @@
+/***************3_Clean_zone_layer_meta_info****************/
+
+use role sysadmin;
+use warehouse compute_wh;
+use schema cricket.clean;
+
+
+--for semi structured data set we will use lateral and fltten function to make it to a structured format 
+---step 1
+--the meta column has no real domain value, and it just capture the JSON file version, since it is an object data type
+--here is the select statement that can extract each element
+--extract element from object data type
+
+SELECT 
+    meta['data_version']::text as data_version,
+    --meta['created']::text as created,
+    meta['revision']::text as revision
+FROM cricket.raw.match_raw_tbl
+;
+
+
+--step 2
+--extract elements from info column that is of variant data type
+--it has lot of important info 
+
+SELECT
+    info:match_type_number::int as match_type_number,
+    info:match_type::text as match_type,
+    info:season::text as season,
+    info:team_type::text as team_type,
+    info:overs::text as overs,
+    info:balls_per_over::int as balls_per_over,
+    info:city::text as city,
+    info:gender::text as gender,
+    info:venue::text as venue
+FROM cricket.raw.match_raw_tbl;
+
+SELECT
+    info:player_of_match::text as player_of_match,
+    info:players::text as players
+FROM cricket.raw.match_raw_tbl;
+
+SELECT 
+    info:event.name::text as event_name,
+    info:event.match_number::int as match_number
+FROM cricket.raw.match_raw_tbl;
+
+select 
+    info:officials.match_referees::text as match_referees,
+    info:officials.match_referees::text as reserve_umpires,
+    info:officials.match_referees::text as tv_umpires,
+    info:officials.match_referees::text as tv_umpires
+FROM cricket.raw.match_raw_tbl;
+
+select info:outcome.winner::text as winner,
+       info:outcome.by.runs::text as Won_by_runs
+FROM cricket.raw.match_raw_tbl;
+
+select info:player_of_match::text as player_of_match
+FROM cricket.raw.match_raw_tbl;
+
+  SELECT case 
+        when info:outcome.winner is not null then 'Result Declared'
+        when info:outcome.result = 'tie' then 'Tie'
+        when info:outcome.result = 'no result' then 'NO Result'
+    else info:outcome.result end as match_result,  
+FROM cricket.raw.match_raw_tbl;
+
+---------------------------final query---------------------------------
+
+create or replace transient table cricket.clean.match_detail_clean as (
+SELECT
+    info:match_type_number::int as match_type_number,
+    info:event.name::text as event_name,
+    case 
+        when info:match_number::text is not null then info:event.number::text
+        when info:event.stage::text is not null then info:event.stage::text
+    else 'NA'
+    end as match_stage,
+    info:dates[0]::date as event_date,
+    date_part('year',info:dates[0]::date) as event_year,
+    date_part('month',info:dates[0]::date) as event_month,
+    date_part('day',info:dates[0]::date) as event_day,
+    info:match_type::text as match_type,
+    info:season::text as season,
+    info:team_type::text as team_type,
+    info:overs::text as overs,
+    info:city::text as city,
+    info:venue::text as venue,
+    info:gender::text as gender,
+    info:teams[0]::text as first_team,
+    info:teams[1]::text as second_team,
+    case 
+        when info:outcome.winner is not null then 'Result Declared'
+        when info:outcome.result = 'tie' then 'Tie'
+        when info:outcome.result = 'no result' then 'NO Result'
+    else info:outcome.result
+    end as match_result,    
+    case 
+        when info:outcome.winner is not null then info:outcome.winner
+    else 'NA'
+    end as winner,
+    info:toss.winner::text as toss_winner,
+    initcap(info:toss.decision::text) as toss_decision,
+    info:officials.match_referees[0]::text as match_referees,
+    info:officials.reserve_umpires[0]::text as reserve_umpires,
+    info:officials.tv_umpires[0]::text as tv_umpires,
+    info:officials.umpires[0]::text as first_umpire,
+    info:officials.umpires[1]::text as second_umpire,
+    stg_file_name,
+    stg_file_row_number,
+    stg_file_hashkey,
+    stg_modified_ts
+    
+FROM cricket.raw.match_raw_tbl
+);
+    
+
+----working on teams with flatten function
+
+--extract players
+--version 1
+select 
+    raw.info:match_type_number::int as match_type_number,
+    raw.info:players,
+    raw.info:teams
+from cricket.raw.match_raw_tbl raw;
+
+
+--version 2 will flatten the table now
+
+select 
+    raw.info:match_type_number::int as match_type_number,
+    --p.*
+    p.key::text as country
+from cricket.raw.match_raw_tbl raw,
+lateral flatten (input=>raw.info:players) p ;
+
+--version 3
+
+select 
+    info:match_type_number::int as match_type_number, 
+    --k.*, v.*
+    k.key::text as country,
+    v.value::text as player_name
+from cricket.raw.match_raw_tbl ,
+lateral flatten (input=>info:players) k, ---here players is key
+lateral flatten (input=>k.value) v  --here we are refering to key corresponding value
+WHERE info:match_type_number=4669;    
+
+--version 4
+create or replace table cricket.clean.player_clean_tbl as(
+select 
+    info:match_type_number::int as match_type_number, 
+    k.key::text as country,
+    v.value::text as player_name,
+
+    stg_file_name,
+    stg_file_row_number,
+    stg_file_hashkey,
+    stg_modified_ts
+    
+from cricket.raw.match_raw_tbl ,
+lateral flatten (input=>info:players) k, ---here players is key
+lateral flatten (input=>k.value) v
+) ;
+
+--describe the table
+
+DESC table CRICKET.CLEAN.PLAYER_CLEAN_TBL
+
+
+--alter not null and fk relationships
+alter table CRICKET.CLEAN.PLAYER_CLEAN_TBL
+modify column match_type_number set not null;
+
+alter table CRICKET.CLEAN.PLAYER_CLEAN_TBL
+modify column country set not null;
+
+alter table CRICKET.CLEAN.PLAYER_CLEAN_TBL
+modify column player_name set not null;
+
+--adding constraint to create link between tables
+
+--step 1 make sure we create primry key in main table 
+--else create the primary key in main table usinf alter table
+alter table CRICKET.CLEAN.MATCH_DETAIL_CLEAN
+add constraint pk_match_type_number primary key (match_type_number);
+
+--then create a foreign key relationship with the players deatils table
+
+alter table CRICKET.CLEAN.PLAYER_CLEAN_TBL
+add constraint fk_match_id
+foreign key (match_type_number)
+references CRICKET.CLEAN.MATCH_DETAIL_CLEAN (match_type_number);
+
+-- to check the foreign key relationship we need to use get_ddl function, we will not be able to see this using describe
+
+select get_ddl('table','CRICKET.CLEAN.PLAYER_CLEAN_TBL');
+
+
+--we have  DBeaver open source tool to view relationship between the tables we can design ER diagrams with this tool
+--A comprehensive database management tool offers a graphical view of database structures, including the relationships between tables.Provides ER diagrams and reverse engineering features.	
+
+
+
+=================worksheet3===============================
+/***************3.1_celan_zone_layer_innings****************/
+
+use role sysadmin;
+use warehouse compute_wh;
+use schema cricket.clean;
+
+--step 3
+--extract elements from innings column that is of Array data type
+--it has lot of important info 
+
+
+--version 1
+
+SELECT
+    m.info:match_type_number::int as match_type_number,
+    m.innings
+FROM CRICKET.RAW.MATCH_RAW_TBL m
+
+--version 2   
+--******Note-  Lateral function is by default uses equijoin 
+-- make make and outer join for lateral function will use outer = true
+SELECT
+    m.info:match_type_number::int as match_type_number,
+    i.value:team::text as team_name ,
+    o.value:over::int+1 as over,
+    d.value:bowler::text as bowler,
+    d.value:batter::text as batter,
+    d.value:non_striker::text as non_striker,
+    d.value:runs.batter::text as batter,
+    d.value:runs.extras::text as extras,
+    d.value:runs.total::text as total 
+FROM CRICKET.RAW.MATCH_RAW_TBL m,
+lateral flatten (input=>m.innings) i,
+lateral flatten (input=>i.value:overs) o,
+lateral flatten (input=>o.value:deliveries) d
+
+
+--version 3
+
+-- make make and outer join for lateral function will use outer = true
+SELECT
+    m.info:match_type_number::int as match_type_number,
+    i.value:team::text as team_name ,
+    o.value:over::int+1 as over,
+    d.value:bowler::text as bowler,
+    d.value:batter::text as batter,
+    d.value:non_striker::text as non_striker,
+    d.value:runs.batter::text as batter,
+    d.value:runs.extras::text as extras,
+    d.value:runs.total::text as total ,
+    e.key::text as extra_type,
+    e.value::number as extra_runs
+    
+FROM CRICKET.RAW.MATCH_RAW_TBL m,
+lateral flatten (input=>m.innings) i,
+lateral flatten (input=>i.value:overs) o,
+lateral flatten (input=>o.value:deliveries) d,
+lateral flatten (input=>d.value:extras,outer => TRUE) e
+-- make make and outer join for lateral function will use outer = true
+
+--version 4
+
+SELECT
+    m.info:match_type_number::int as match_type_number,
+    i.value:team::text as team_name ,
+    o.value:over::int+1 as over,
+    d.value:bowler::text as bowler,
+    d.value:batter::text as batter,
+    d.value:non_striker::text as non_striker,
+    d.value:runs.batter::text as batter,
+    d.value:runs.extras::text as extras,
+    d.value:runs.total::text as total ,
+	d.value:wickets[0].fielders[0].name::text as fielders_name,
+    d.value:wickets[0].kind::text as kind_of_out,
+    d.value:wickets[0].player_out::text as player_out,	
+    e.key::text as extra_type,
+    e.value::number as extra_runs,
+    w.value:player_out::text as palyer_out,
+    w.value:kind::text as palyer_out_kind,
+    w.value:fielders::text as palyer_out_fielders
+    
+FROM CRICKET.RAW.MATCH_RAW_TBL m,
+lateral flatten (input=>m.innings) i,
+lateral flatten (input=>i.value:overs) o,
+lateral flatten (input=>o.value:deliveries) d,
+lateral flatten (input=>d.value:extras,outer => TRUE) e,
+lateral flatten (input=>d.value:wickets,outer => TRUE) w
+-- make make and outer join for lateral function will use outer = true
+
+
+--version 5
+
+
+create or replace transient table CRICKET.CLEAN.delivery_clean_tbl as (
+SELECT
+    m.info:match_type_number::int as match_type_number,
+    i.value:team::text as team_name ,
+    o.value:over::int+1 as over,
+    d.value:bowler::text as bowler,
+    d.value:batter::text as batter,
+    d.value:non_striker::text as non_striker,
+    d.value:runs.batter::text as runs,
+    d.value:runs.extras::text as extras,
+    d.value:runs.total::text as total ,
+	d.value:wickets[0].fielders[0].name::text as fielders_name,
+    d.value:wickets[0].kind::text as kind_of_out,
+    d.value:wickets[0].player_out::text as player_out,
+	e.key::text as extra_type,
+    e.value::number as extra_runs,
+    w.value:player_out::text as palyer_out,
+    w.value:kind::text as palyer_out_kind,
+    w.value:fielders::text as palyer_out_fielders,
+    
+    stg_file_name,
+    stg_file_row_number,
+    stg_file_hashkey,
+    stg_modified_ts
+FROM CRICKET.RAW.MATCH_RAW_TBL m,
+lateral flatten (input=>m.innings) i,
+lateral flatten (input=>i.value:overs) o,
+lateral flatten (input=>o.value:deliveries) d,
+lateral flatten (input=>d.value:extras,outer => TRUE) e,
+lateral flatten (input=>d.value:wickets,outer => TRUE) w
+);
+
+select count(*) FROM CRICKET.RAW.MATCH_RAW_TBL;
+select  count( distinct match_type_number)  FROM CRICKET.CLEAN.PLAYER_CLEAN_TBL;
+select  count(distinct match_type_number) FROM  CRICKET.CLEAN.DELIVERY_CLEAN_TBL;
+
+alter table CRICKET.CLEAN.DELIVERY_CLEAN_TBL modify column match_type_number set not null;
+alter table CRICKET.CLEAN.DELIVERY_CLEAN_TBL modify column team_name set not null;	
+alter table CRICKET.CLEAN.DELIVERY_CLEAN_TBL modify column over set not null;
+alter table CRICKET.CLEAN.DELIVERY_CLEAN_TBL modify column bowler set not null;
+alter table CRICKET.CLEAN.DELIVERY_CLEAN_TBL modify column batter set not null;
+alter table CRICKET.CLEAN.DELIVERY_CLEAN_TBL modify column non_striker set not null;
+
+
+--fk reelationship
+alter table CRICKET.CLEAN.DELIVERY_CLEAN_TBL 
+add constraint fk_delivery_match_id
+foreign key (match_type_number)
+references CRICKET.CLEAN.MATCH_DETAIL_CLEAN (match_type_number);
+
+=================worksheet3===============================
+/***************sample data_validation****************/
+
+--validation
+
+SELECT * FROM CRICKET.CLEAN.MATCH_DETAIL_CLEAN
+WHERE match_type_number=4669
+
+--batsman
+select team_name,
+batter,sum(runs)
+FROM CRICKET.CLEAN.DELIVERY_CLEAN_TBL
+WHERE MATCH_TYPE_NUMBER =4669
+group by 1,2
+order by 1,2,3 desc
+
+--by team
+
+select team_name,
+sum(runs)+sum(extra_runs) as total_runs
+FROM CRICKET.CLEAN.DELIVERY_CLEAN_TBL
+WHERE MATCH_TYPE_NUMBER =4669
+group by 1
+order by 1,2 desc

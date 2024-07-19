@@ -1,0 +1,71 @@
+-- Change context to the land schema
+USE SCHEMA cricket.land;
+
+Creating File Format and Internal Stage in Snowflake
+Execute the following commands in the Snowflake web UI to create a JSON file format, an internal stage, and list the contents of the stage. Additionally, specify the context or path where the JSON files can reside.
+
+-- Create JSON file format
+CREATE OR REPLACE FILE FORMAT cricket.land.my_json_format
+TYPE = json
+NULL_IF = ('\\n', 'null', '')
+STRIP_OUTER_ARRAY = true
+COMMENT = 'JSON file format with outer strip array flag set to true';
+
+-- Create an internal stage
+CREATE OR REPLACE STAGE cricket.land.my_stg;
+
+-- List the contents of the internal stage
+LIST @cricket.land.my_stg;
+
+-- Specify the context or path for JSON files
+-- Example: /cricket/json
+
+Specifying File Path for JSON Files in Snowflake
+To specify the path where JSON files can reside (/cricket/json), follow these steps:
+
+Navigate to Snowflake Home:
+Go to the Snowflake web interface.
+Access Data Section: Click on "Data" in the left panel.
+Select Database: Choose the database "cricket" where you want to specify the file path.
+Navigate to Schema: In the right panel, locate and select the "LAND" schema under the "cricket" database. This schema is dedicated for landing data into Snowflake.
+File Formats and Stage: Within the "LAND" schema options, locate and click on "STAGE".
+Manage Stage Options: Find the "MY_STG" stage and select it.
+Enable Directory: Click on "Enable Directory Browser" to enable navigation within the directory.
+Add Files to Directory: Use the browse option to add files to the directory. You can upload JSON files directly here.
+Create Subfolders (Optional):If needed, create subfolders within the directory to organize files. You can specify a path to locate your files in Snowflake.
+By following these steps, you can specify and manage the path where JSON files are located within the "MY_STG" stage under the "LAND" schema in your Snowflake database.
+
+we can specify the context or path where the json files can reside like
+/cricket/json
+
+--check if the data is loaded or not
+list @my_stg/cricket/json;
+
+---quick check if the data is coming correctly or not
+select 
+        x.$1:meta::variant as meta,
+        x.$1:info::variant as info,
+        x.$1:innings::variant as innings,
+        metadata$filename as file_name,
+        metadata$file_row_number int,
+        metadata$file_content_key  text,
+        metadata$file_last_modified stg_modified_ts  
+
+FROM @my_stg/cricket/json/1384426.json.gz (file_format => 'my_json_format') x;
+
+--check if the data is loaded or not
+list @cricket.land.my_stg;
+
+Bulk Loading Files into Snowflake Data Warehouse Using CLI
+To load multiple files into Snowflake data warehouse in a single operation, we can efficiently utilize the Snowflake CLI (Command Line Interface).
+
+******************************Log in to SnowSQL**********************************************
+snowsql -a connection_string -u <username> -r <role_name> -w <warehouse_name> -d <database_name> -s <schema>
+
+-- Upload the file to the internal stage
+syntax PUT file://<local_path>/sample_data.csv @my_internal_stage;
+
+PUT file://E:\Projects\JSONfiles\2023-world-cup-json/*.json @MY_STG/cricket/json/ parallel=20;
+
+COMPUTE_WH@CRICKET.LAND>list @MY_STG/MY_STG/cricket/json;
+-- this will show the list of files loaded successfully into snowflake

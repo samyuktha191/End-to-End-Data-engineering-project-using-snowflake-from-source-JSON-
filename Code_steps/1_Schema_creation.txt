@@ -1,0 +1,18 @@
+Commands to Run in Snowflake Web UI
+Execute the following commands in the Snowflake web UI to set up the database and schemas:
+
+-- Switch to the sysadmin role
+USE ROLE sysadmin;
+
+-- Select the compute warehouse
+USE WAREHOUSE compute_wh;
+
+-- Create the database and schemas
+CREATE DATABASE IF NOT EXISTS cricket;
+CREATE OR REPLACE SCHEMA cricket.land;
+CREATE OR REPLACE SCHEMA cricket.raw;
+CREATE OR REPLACE SCHEMA cricket.clean;
+CREATE OR REPLACE SCHEMA cricket.consumption;
+
+-- Verification: Show schemas in the cricket database
+SHOW SCHEMAS IN DATABASE cricket;

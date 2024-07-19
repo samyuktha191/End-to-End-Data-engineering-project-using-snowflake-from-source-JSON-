@@ -1,0 +1,133 @@
+Database and Schema Creation in snowflake
+
+JSON_fileformat>>>>Internal_stage>>>>Query_staged_file>>>>target_consumption_layer
+
+We will create a database called cricket, which will contain four different schemas:
+
+Land        =>>Purpose: Landing the file into the stage.
+Raw         =>>Purpose: Extracting data from the stage and loading raw data from JSON files into tables.
+Clean       =>>Purpose: Data cleansing and profiling from raw data tables, loading the data into clean staging tables.
+Consumption =>>Purpose: Designing and loading the data model from clean schema tables.
+
+Data Loading Strategy
+We will create a file format of type JSON and a stage location where JSON data will be loaded using the Snowsight web UI. For bulk data loading, we will utilize the SnowSQL CLI due to the following reasons:
+
+Snowsight Limitation: Snowsight web UI allows only 50 MB of data to be uploaded at a time, which can be challenging for large datasets or multiple files.
+Efficiency: Using SnowSQL CLI enables us to load large volumes of JSON data efficiently without the need for repeated uploads through the web UI.
+By combining Snowsight for smaller uploads and SnowSQL CLI for bulk data loading, we can manage our data ingestion process more effectively.
+
+all the above steps are carried in 1_Schema_creation
+
+-----------------------------------------------------------------------------
+Creating File Format and Internal Stage in Snowflake
+Execute the following commands in the Snowflake web UI to create a JSON file format, an internal stage, and list the contents of the stage. Additionally, specify the context or path where the JSON files can reside.
+-- Specify the context or path for JSON files
+-- Example: /cricket/json
+
+Specifying File Path for JSON Files in Snowflake
+To specify the path where JSON files can reside (/cricket/json), follow these steps:
+
+Navigate to Snowflake Home:
+Go to the Snowflake web interface.
+Access Data Section: Click on "Data" in the left panel.
+Select Database: Choose the database "cricket" where you want to specify the file path.
+Navigate to Schema: In the right panel, locate and select the "LAND" schema under the "cricket" database. This schema is dedicated for landing data into Snowflake.
+File Formats and Stage: Within the "LAND" schema options, locate and click on "STAGE".
+Manage Stage Options: Find the "MY_STG" stage and select it.
+Enable Directory: Click on "Enable Directory Browser" to enable navigation within the directory.
+Add Files to Directory: Use the browse option to add files to the directory. You can upload JSON files directly here.
+Create Subfolders (Optional):If needed, create subfolders within the directory to organize files. You can specify a path to locate your files in Snowflake.
+By following these steps, you can specify and manage the path where JSON files are located within the "MY_STG" stage under the "LAND" schema in your Snowflake database.
+
+we can specify the context or path where the json files can reside like
+/cricket/json
+
+all the above steps are carried in 2_Stage_creation_loading_files
+-----------------------------------------------------------------------------
+
+Data Cleaning and Curation
+In this phase, we will analyze individual columns using SELECT statements to extract elements from various types of semi-structured data. Our objectives include:
+
+Data Analysis: Perform detailed analysis on raw layer tables.
+Data Extraction: Use Snowflake's LATERAL and FLATTEN functions for extracting elements from semi-structured data.
+Data Cleaning: Implement cleaning procedures to ensure data quality and consistency.
+Logical Data Storage: Design and create tables in the clean layer schema to store curated content in a more structured manner.
+Approach:
+Data Analysis:
+
+Use SELECT statements to analyze individual columns in raw layer tables.
+Identify patterns and structures within the data.
+Data Extraction:
+
+Utilize Snowflake's LATERAL and FLATTEN functions to extract nested elements from semi-structured data.
+Transform data into a tabular format suitable for analysis and storage.
+Data Cleaning:
+
+Implement data cleaning procedures to handle null values, inconsistencies, and anomalies.
+Standardize data formats and values as per business requirements.
+Logical Data Storage:
+
+Design tables within the clean layer schema to store curated data.
+Normalize data where applicable to reduce redundancy and improve data integrity.
+Focus Areas:
+Raw Layer Analysis:
+
+Perform initial exploration and analysis of data in its original format.
+Identify challenges and opportunities for data extraction and cleansing.
+Clean Layer Design:
+
+Define table structures that align with the curated content.
+Populate tables using transformed and cleaned data from the raw layer.
+By following this approach, we aim to transform semi-structured data into a structured format that is optimized for analysis and supports efficient querying within Snowflake.
+
+all the above steps are carried in 4_Data_cleaning _layer
+-----------------------------------------------------------------------------
+
+Fact and Dimension Tables Design
+With our cleaned data spread across 3 tables, we will now create fact and dimension tables to answer specific questions and structure our data efficiently:
+
+Match Fact Table
+Purpose: Captures information about each match event.
+Dimensions-
+Date dimension (when the match was played)
+Team dimension (which teams competed)
+Venue dimension (location where the match took place)
+Referee dimension
+MatchType dimension
+Player dimension
+Delivery Fact Table
+
+Team and player dimensions tracks each delivery/bowling event within a match, also they have a relationship connected to the Match Fact Table in a 1-to-many relationship (each match can have multiple deliveries).
+
+Queries Answered by Fact and Dimension Tables:
+When was the match played?
+
+Date dimension in the Match Fact Table.
+Which teams competed in the match?
+
+Team dimension in the Match Fact Table.
+In which location did the match take place?
+
+Venue dimension in the Match Fact Table.
+Total number of runs scored by Team A in the first 5 overs of Match X?
+
+Utilize the Delivery Fact Table linked with Team and Match dimensions to compute this metric.
+Implementation Strategy:
+Design Fact Tables:
+
+Define schema and relationships for Match Fact and Delivery Fact Tables.
+Ensure proper indexing and optimization for query performance.
+Populate Dimension Tables:
+
+Populate dimensions with relevant attributes (e.g., teams, players, venues).
+Load Data:
+
+Populate Fact Tables using cleaned data from the existing tables.
+By structuring our data into these fact and dimension tables, we can efficiently query and analyze cricket match events and delivery details within Snowflake, leveraging dimensional modeling principles for clarity and performance.
+
+all the above steps are carried in 5_Consumption_layer
+-----------------------------------------------------------------------------
+
+
+
+
