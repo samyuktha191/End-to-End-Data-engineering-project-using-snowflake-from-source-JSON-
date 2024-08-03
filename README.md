@@ -57,3 +57,11 @@ Components: Data prepared for use, views for dashboards.
 BI Layer
 Description: Visualization and reporting.
 Components: Snowsight filters and dashboards.
+
+
+
+Data Modeling to build Cricket Datawarehouse Facts and Dimensions models. 
+
+
+![cricket - CRICKET - CONSUMPTION](https://github.com/user-attachments/assets/d9031d2e-0003-48c9-a955-28698f03865c)
+
