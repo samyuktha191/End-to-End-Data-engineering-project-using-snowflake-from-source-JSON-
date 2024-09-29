@@ -1,5 +1,5 @@
 # End-to-End-Data-engineering-project-using-snowflake-from-source-JSON
-Building a end to end DWH solution using snowflake
+Building a end to end DWH solution using snowflake.
 
 Project Name- Data engineering using snowflake
 
