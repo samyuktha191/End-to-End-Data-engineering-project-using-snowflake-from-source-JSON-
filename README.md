@@ -1,7 +1,7 @@
 # End-to-End-Data-engineering-project-using-snowflake-from-source-JSON
 Building a end to end DWH solution using snowflake.
 
-Project Name- Data engineering using snowflake
+Project Name- Data engineering using snowflake.
 
 Overview:
 This project aims to build an end-to-end data engineering pipeline using a sample cricket dataset. The pipeline includes loading data from JSON files into Snowflake, cleansing the unstructured data to convert it into a structured format, performing necessary transformations, and constructing a data warehouse (DWH) solution.
